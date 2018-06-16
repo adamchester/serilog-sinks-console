@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.IO;
 
 namespace Serilog.Sinks.SystemConsole.Themes
@@ -31,6 +32,11 @@ namespace Serilog.Sinks.SystemConsole.Themes
         /// buffered and measured.
         /// </summary>
         public abstract bool CanBuffer { get; }
+
+        internal IDisposable Apply(TextWriter output, object style, ref int _)
+        {
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// Begin a span of text in the specified <paramref name="style"/>.

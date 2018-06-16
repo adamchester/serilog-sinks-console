@@ -54,6 +54,10 @@ namespace Serilog.Sinks.SystemConsole.Output
                 {
                     renderers.Add(new ExceptionTokenRenderer(theme, pt));
                 }
+                else if (pt.PropertyName == "ThemedException")
+                {
+                    renderers.Add(new ThemedExceptionTokenRenderer(theme, pt));
+                }
                 else if (pt.PropertyName == OutputProperties.MessagePropertyName)
                 {
                     renderers.Add(new MessageTemplateOutputTokenRenderer(theme, pt, formatProvider));
