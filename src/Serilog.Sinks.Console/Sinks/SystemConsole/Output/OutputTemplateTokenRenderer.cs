@@ -17,8 +17,16 @@ using Serilog.Events;
 
 namespace Serilog.Sinks.SystemConsole.Output
 {
-    abstract class OutputTemplateTokenRenderer
+    /// <summary>
+    /// Allows a custom {Token} to be in the output template.
+    /// </summary>
+    public abstract class OutputTemplateTokenRenderer
     {
+        /// <summary>
+        /// Allows this renderer to append it's contents to the <see cref="TextWriter"/>.
+        /// </summary>
+        /// <param name="logEvent"></param>
+        /// <param name="output"></param>
         public abstract void Render(LogEvent logEvent, TextWriter output);
     }
 }

@@ -33,11 +33,6 @@ namespace Serilog.Sinks.SystemConsole.Themes
         /// </summary>
         public abstract bool CanBuffer { get; }
 
-        internal IDisposable Apply(TextWriter output, object style, ref int _)
-        {
-            throw new NotImplementedException();
-        }
-
         /// <summary>
         /// Begin a span of text in the specified <paramref name="style"/>.
         /// </summary>
@@ -57,7 +52,11 @@ namespace Serilog.Sinks.SystemConsole.Themes
         /// </summary>
         protected abstract int ResetCharCount { get; }
 
-        internal StyleReset Apply(TextWriter output, ConsoleThemeStyle style, ref int invisibleCharacterCount)
+        /// <summary>
+        /// Applies the theme to the <paramref name="output"/> and returns a <see cref="StyleReset"/>
+        /// which can be used to reset the colour styles after the apply block is completed.
+        /// </summary>
+        public StyleReset Apply(TextWriter output, ConsoleThemeStyle style, ref int invisibleCharacterCount)
         {
             invisibleCharacterCount += Set(output, style);
             invisibleCharacterCount += ResetCharCount;

@@ -23,13 +23,71 @@ using Serilog.Sinks.SystemConsole.Themes;
 
 namespace Serilog.Sinks.SystemConsole.Output
 {
-    class OutputTemplateRenderer : ITextFormatter
+    /// <summary>
+    /// Defines the signature of a method creates an <see cref="OutputTemplateTokenRenderer"/> for the given
+    /// <see cref="PropertyToken"/>, <see cref="ConsoleTheme"/>, <see cref="MessageTemplate"/>, and
+    /// <see cref="IFormatProvider"/>.
+    /// </summary>
+    /// <param name="outputTemplate">The full output template itself.</param>
+    /// <param name="propertyToken">The output template property token for which the factory is creating a renderer.</param>
+    /// <param name="theme">The output theme that will be used by the created renderer</param>
+    /// <param name="formatProvider">The format provider which the created renderer will use (if appropriate)</param>
+    /// <returns>An <see cref="OutputTemplateTokenRenderer"/> instance which renders the </returns>
+    public delegate OutputTemplateTokenRenderer OutputTemplateTokenRendererFactory(
+        MessageTemplate outputTemplate, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider formatProvider);
+
+    /// <summary>
+    /// For the love of developer happiness, document me, please!
+    /// </summary>
+    public class OutputTemplateRenderer : ITextFormatter
     {
         readonly OutputTemplateTokenRenderer[] _renderers;
 
+        /// <summary>
+        /// A map from output template property names (<see cref="OutputProperties"/>) to an
+        /// <see cref="OutputTemplateTokenRendererFactory"/> which can create the
+        /// <see cref="OutputTemplateTokenRenderer"/> instance.
+        /// </summary>
+        static Dictionary<string, OutputTemplateTokenRendererFactory> DefaultPropertyRenderers { get; } =
+            new Dictionary<string, OutputTemplateTokenRendererFactory>
+            {
+                [OutputProperties.LevelPropertyName]        = (template, pt, theme, formatProvider) => new LevelTokenRenderer(theme, pt),
+                [OutputProperties.NewLinePropertyName]      = (template, pt, theme, formatProvider) => new NewLineTokenRenderer(pt.Alignment),
+                [OutputProperties.ExceptionPropertyName]    = (template, pt, theme, formatProvider) => new ExceptionTokenRenderer(theme, pt),
+                [OutputProperties.MessagePropertyName]      = (template, pt, theme, formatProvider) => new MessageTemplateOutputTokenRenderer(theme, pt, formatProvider),
+                [OutputProperties.TimestampPropertyName]    = (template, pt, theme, formatProvider) => new TimestampTokenRenderer(theme, pt, formatProvider),
+                [OutputProperties.PropertiesPropertyName]   = (template, pt, theme, formatProvider) => new PropertiesTokenRenderer(theme, pt, template, formatProvider),
+            };
+
+        /// <summary>
+        /// Creates an <see cref="OutputTemplateTokenRenderer"/> for the provided <see cref="PropertyToken"/> in a
+        /// in an output template (itself, a <see cref="MessageTemplate"/>) for the standard <see cref="OutputProperties"/>
+        /// or <see langword="null"/> if the <paramref name="propertyToken"/> is not one of the standard output property names.
+        /// </summary>
+        public static OutputTemplateTokenRenderer CreateStandardDisplayOutputPropertiesRenderer(
+            MessageTemplate outputTemplate, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider formatProvider)
+        {
+            return DefaultPropertyRenderers.TryGetValue(propertyToken.PropertyName, out var rendererFactory)
+                ? rendererFactory(outputTemplate, propertyToken, theme, formatProvider)
+                : null;
+        }
+
+        /// <summary>
+        /// For the love of developer happiness, document me, please!
+        /// </summary>
         public OutputTemplateRenderer(ConsoleTheme theme, string outputTemplate, IFormatProvider formatProvider)
+            : this(theme, outputTemplate, formatProvider, CreateStandardDisplayOutputPropertiesRenderer)
+        {
+        }
+
+        /// <summary>
+        /// For the love of developer happiness, document me, please!
+        /// </summary>
+        public OutputTemplateRenderer(ConsoleTheme theme, string outputTemplate, IFormatProvider formatProvider, OutputTemplateTokenRendererFactory rendererFactory)
         {
             if (outputTemplate == null) throw new ArgumentNullException(nameof(outputTemplate));
+            if (rendererFactory == null) throw new ArgumentNullException(nameof(rendererFactory));
+
             var template = new MessageTemplateParser().Parse(outputTemplate);
 
             var renderers = new List<OutputTemplateTokenRenderer>();
@@ -42,43 +100,19 @@ namespace Serilog.Sinks.SystemConsole.Output
                 }
 
                 var pt = (PropertyToken)token;
-                if (pt.PropertyName == OutputProperties.LevelPropertyName)
-                {
-                    renderers.Add(new LevelTokenRenderer(theme, pt));
-                }
-                else if (pt.PropertyName == OutputProperties.NewLinePropertyName)
-                {
-                    renderers.Add(new NewLineTokenRenderer(pt.Alignment));
-                }
-                else if (pt.PropertyName == OutputProperties.ExceptionPropertyName)
-                {
-                    renderers.Add(new ExceptionTokenRenderer(theme, pt));
-                }
-                else if (pt.PropertyName == "ThemedException")
-                {
-                    renderers.Add(new ThemedExceptionTokenRenderer(theme, pt));
-                }
-                else if (pt.PropertyName == OutputProperties.MessagePropertyName)
-                {
-                    renderers.Add(new MessageTemplateOutputTokenRenderer(theme, pt, formatProvider));
-                }
-                else if (pt.PropertyName == OutputProperties.TimestampPropertyName)
-                {
-                    renderers.Add(new TimestampTokenRenderer(theme, pt, formatProvider));
-                }
-                else if (pt.PropertyName == "Properties")
-                {
-                    renderers.Add(new PropertiesTokenRenderer(theme, pt, template, formatProvider));
-                }
-                else
-                {
-                    renderers.Add(new EventPropertyTokenRenderer(theme, pt, formatProvider));
-                }
+                renderers.Add(
+                    rendererFactory(template, pt, theme, formatProvider)
+                        ?? new EventPropertyTokenRenderer(theme, pt, formatProvider));
             }
 
             _renderers = renderers.ToArray();
         }
 
+        /// <summary>
+        /// Renders the <see cref="LogEvent"/> to the <see cref="TextWriter"/> output.
+        /// </summary>
+        /// <param name="logEvent">The event to render</param>
+        /// <param name="output">The destination of the rendered output text</param>
         public void Format(LogEvent logEvent, TextWriter output)
         {
             if (logEvent == null) throw new ArgumentNullException(nameof(logEvent));

@@ -17,17 +17,26 @@ using System.IO;
 
 namespace Serilog.Sinks.SystemConsole.Themes
 {
-    struct StyleReset : IDisposable
+    /// <summary>
+    /// Allows an applied <see cref="ConsoleTheme"/> style to be reset.
+    /// </summary>
+    public struct StyleReset : IDisposable
     {
         readonly ConsoleTheme _theme;
         readonly TextWriter _output;
 
+        /// <summary>
+        /// Ctor.
+        /// </summary>
         public StyleReset(ConsoleTheme theme, TextWriter output)
         {
             _theme = theme;
             _output = output;
         }
 
+        /// <summary>
+        /// Resets the style.
+        /// </summary>
         public void Dispose()
         {
             _theme.Reset(_output);

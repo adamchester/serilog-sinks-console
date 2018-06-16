@@ -4,18 +4,32 @@ using System.Threading;
 using Serilog.Sinks.SystemConsole.Themes;
 using System.Linq;
 using System.Collections.Generic;
+using Serilog.Sinks.SystemConsole.Output;
+using Serilog.Events;
+using Serilog.Parsing;
 
 namespace ConsoleDemo
 {
     public class Program
     {
+        static OutputTemplateTokenRenderer ThemedExceptionSupportingTemplateRendererFactory(
+            MessageTemplate template, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider provider)
+        {
+            if (propertyToken.PropertyName == "ThemedException")
+            {
+                return new ThemedExceptionTokenRenderer(theme, propertyToken);
+            }
+            return OutputTemplateRenderer.CreateStandardDisplayOutputPropertiesRenderer(template, propertyToken, theme, provider);
+        }
+
         public static void Main()
         {
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
-                .WriteTo.Console(theme: AnsiConsoleTheme.Code,
-                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} <src: {SourceContext}>{NewLine}{Exception}")
-
+                .WriteTo.Console(
+                    theme: AnsiConsoleTheme.Code,
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{ThemedException}",
+                    outputTemplateTokenRendererFactory: ThemedExceptionSupportingTemplateRendererFactory)
                 .CreateLogger();
 
             try
