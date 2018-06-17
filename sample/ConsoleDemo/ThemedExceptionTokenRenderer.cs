@@ -16,10 +16,10 @@ namespace ConsoleDemo
         readonly PropertyToken _pt;
         readonly OutputTemplateTokenRenderer _fallbackExceptionRenderer;
 
-        public ThemedExceptionTokenRenderer(ConsoleTheme theme, PropertyToken pt, OutputTemplateTokenRenderer fallbackExceptionRenderer = null)
+        public ThemedExceptionTokenRenderer(ConsoleTheme theme, PropertyToken propertyToken, OutputTemplateTokenRenderer fallbackExceptionRenderer = null)
         {
             _theme = theme;
-            _pt = pt;
+            _pt = propertyToken;
             _fallbackExceptionRenderer = fallbackExceptionRenderer;
         }
 

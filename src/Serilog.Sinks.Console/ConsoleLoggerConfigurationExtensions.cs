@@ -55,12 +55,8 @@ namespace Serilog
             if (sinkConfiguration == null) throw new ArgumentNullException(nameof(sinkConfiguration));
             if (outputTemplateRenderer == null) throw new ArgumentNullException(nameof(outputTemplateRenderer));
 
-            var appliedTheme = System.Console.IsOutputRedirected || System.Console.IsErrorRedirected ?
-                ConsoleTheme.None :
-                outputTemplateRenderer.Theme ?? SystemConsoleThemes.Literate;
-
             return sinkConfiguration.Sink(
-                new ConsoleSink(appliedTheme, outputTemplateRenderer, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
+                new ConsoleSink(outputTemplateRenderer, outputTemplateRenderer.CanBuffer, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
         }
 
         /// <summary>
@@ -95,7 +91,7 @@ namespace Serilog
                 theme ?? SystemConsoleThemes.Literate;
 
             var formatter = new OutputTemplateRenderer(appliedTheme, outputTemplate, formatProvider);
-            return sinkConfiguration.Sink(new ConsoleSink(appliedTheme, formatter, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
+            return sinkConfiguration.Sink(new ConsoleSink(formatter, formatter.CanBuffer, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
         }
 
         /// <summary>
@@ -120,7 +116,7 @@ namespace Serilog
             if (sinkConfiguration == null) throw new ArgumentNullException(nameof(sinkConfiguration));
             if (formatter == null) throw new ArgumentNullException(nameof(formatter));
 
-            return sinkConfiguration.Sink(new ConsoleSink(ConsoleTheme.None, formatter, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
+            return sinkConfiguration.Sink(new ConsoleSink(formatter, ConsoleTheme.None.CanBuffer, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
         }
     }
 }

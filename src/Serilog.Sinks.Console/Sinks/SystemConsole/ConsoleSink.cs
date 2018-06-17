@@ -25,8 +25,8 @@ namespace Serilog.Sinks.SystemConsole
 {
     class ConsoleSink : ILogEventSink
     {
+        readonly bool _canBuffer;
         readonly LogEventLevel? _standardErrorFromLevel;
-        readonly ConsoleTheme _theme;
         readonly ITextFormatter _formatter;
         readonly object _syncRoot = new object();
 
@@ -38,12 +38,12 @@ namespace Serilog.Sinks.SystemConsole
         }
 
         public ConsoleSink(
-            ConsoleTheme theme,
             ITextFormatter formatter,
+            bool canBuffer,
             LogEventLevel? standardErrorFromLevel)
         {
+            _canBuffer = canBuffer;
             _standardErrorFromLevel = standardErrorFromLevel;
-            _theme = theme ?? throw new ArgumentNullException(nameof(theme));
             _formatter = formatter;
         }
 
@@ -54,7 +54,7 @@ namespace Serilog.Sinks.SystemConsole
             // ANSI escape codes can be pre-rendered into a buffer; however, if we're on Windows and
             // using its console coloring APIs, the color switches would happen during the off-screen
             // buffered write here and have no effect when the line is actually written out.
-            if (_theme.CanBuffer)
+            if (_canBuffer)
             {
                 var buffer = new StringWriter(new StringBuilder(DefaultWriteBuffer));
                 _formatter.Format(logEvent, buffer);
