@@ -7,19 +7,55 @@ using System.Collections.Generic;
 using Serilog.Sinks.SystemConsole.Output;
 using Serilog.Events;
 using Serilog.Parsing;
+using System.IO;
+using System.Text.RegularExpressions;
 
 namespace ConsoleDemo
 {
     public class Program
     {
-        static OutputTemplateTokenRenderer ThemedExceptionSupportingTemplateRendererFactory(
-            MessageTemplate template, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider provider)
+        class BufferScrubbingMessageRenderer : OutputTemplateTokenRenderer
         {
-            if (propertyToken.PropertyName == "ThemedException")
+            readonly ConsoleTheme _theme;
+            readonly IFormatProvider _provider;
+            readonly Func<string, string> _scrubber;
+            readonly OutputTemplateTokenRenderer _inner;
+
+            public BufferScrubbingMessageRenderer(ConsoleTheme theme, IFormatProvider provider, Func<string, string> scrubber, OutputTemplateTokenRenderer inner)
             {
-                return new ThemedExceptionTokenRenderer(theme, propertyToken);
+                _theme = theme;
+                _provider = provider;
+                _scrubber = scrubber;
+                _inner = inner;
+                if (!theme.CanBuffer)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(theme), "No support for scrubbing unbuffered themes at this stage.");
+                }
             }
-            return OutputTemplateRenderer.CreateStandardDisplayOutputPropertiesRenderer(template, propertyToken, theme, provider);
+
+            public override void Render(LogEvent logEvent, TextWriter output)
+            {
+                var bufferWriter = new StringWriter(_provider);
+                _inner.Render(logEvent, bufferWriter);
+                var writtenString = _scrubber(bufferWriter.GetStringBuilder().ToString());
+                output.Write(writtenString);
+            }
+        }
+
+        static OutputTemplateRenderer.TokenRendererFactory RegexSrubbingTemplateRendererFactory(Regex matcher, string replacement)
+        {
+            return (t, pt, th, p) =>
+            {
+                if (pt.PropertyName == "Exception")
+                {
+                    return new BufferScrubbingMessageRenderer(th, p,
+                        scrubber: rendered => matcher.Replace(rendered, replacement),
+                        inner: new ThemedExceptionTokenRenderer(th, pt));
+                }
+                return new BufferScrubbingMessageRenderer(th, p,
+                    scrubber: rendered => matcher.Replace(rendered, replacement),
+                    inner: OutputTemplateRenderer.NewStandardRenderer(t, pt, th, p));
+            };
         }
 
         public static void Main()
@@ -27,9 +63,17 @@ namespace ConsoleDemo
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
                 .WriteTo.Console(
-                    theme: AnsiConsoleTheme.Code,
-                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{ThemedException}",
-                    outputTemplateTokenRendererFactory: ThemedExceptionSupportingTemplateRendererFactory)
+                    outputTemplate: "[UNSCRUBBED] [{Timestamp:HH:mm:ss} {Level:u3}] {Message}{NewLine}{Exception}",
+                    theme: AnsiConsoleTheme.Literate)
+                .WriteTo.Console(
+                    new OutputTemplateRenderer(
+                        theme: AnsiConsoleTheme.Code,
+                        outputTemplate: "[SCRUBBED  ] [{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                        formatProvider: null,
+                        rendererFactory: RegexSrubbingTemplateRendererFactory(
+                            matcher: new Regex("adam", options: RegexOptions.IgnoreCase | RegexOptions.Compiled),
+                            replacement: "<redacted>")),
+                    standardErrorFromLevel: LevelAlias.Minimum)
                 .CreateLogger();
 
             try

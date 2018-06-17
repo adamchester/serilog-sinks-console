@@ -34,40 +34,33 @@ namespace Serilog
         /// Writes log events to <see cref="System.Console"/>.
         /// </summary>
         /// <param name="sinkConfiguration">Logger sink configuration.</param>
+        /// <param name="outputTemplateRenderer">An <see cref="OutputTemplateRenderer"/>, which can optionally use
+        /// a custom <see cref="OutputTemplateRenderer.TokenRendererFactory"/> to customise the way tokens are rendered. Use
+        /// <see cref="OutputTemplateRenderer.NewStandardRenderer(MessageTemplate, Parsing.PropertyToken, ConsoleTheme, IFormatProvider)"/>
+        /// as the <see cref="OutputTemplateRenderer.TokenRendererFactory"/> to inherit the built-in standard rendering behaviour, or
+        /// create a new factor that overrides or adds certain properties to alter the behaviour.</param>
         /// <param name="restrictedToMinimumLevel">The minimum level for
         /// events passed through the sink. Ignored when <paramref name="levelSwitch"/> is specified.</param>
         /// <param name="levelSwitch">A switch allowing the pass-through minimum level
         /// to be changed at runtime.</param>
-        /// <param name="outputTemplate">A message template describing the format used to write to the sink.
-        /// the default is <code>"[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"</code>.</param>
-        /// <param name="formatProvider">Supplies culture-specific formatting information, or null.</param>
         /// <param name="standardErrorFromLevel">Specifies the level at which events will be written to standard error.</param>
-        /// <param name="theme">The theme to apply to the styled output. If not specified,
-        /// uses <see cref="SystemConsoleTheme.Literate"/>.</param>
-        /// <param name="outputTemplateTokenRendererFactory"></param>
         /// <returns>Configuration object allowing method chaining.</returns>
         public static LoggerConfiguration Console(
             this LoggerSinkConfiguration sinkConfiguration,
+            OutputTemplateRenderer outputTemplateRenderer,
             LogEventLevel restrictedToMinimumLevel = LevelAlias.Minimum,
-            string outputTemplate = DefaultConsoleOutputTemplate,
-            IFormatProvider formatProvider = null,
             LoggingLevelSwitch levelSwitch = null,
-            LogEventLevel? standardErrorFromLevel = null,
-            ConsoleTheme theme = null,
-            OutputTemplateTokenRendererFactory outputTemplateTokenRendererFactory = null)
+            LogEventLevel? standardErrorFromLevel = null)
         {
             if (sinkConfiguration == null) throw new ArgumentNullException(nameof(sinkConfiguration));
-            if (outputTemplate == null) throw new ArgumentNullException(nameof(outputTemplate));
+            if (outputTemplateRenderer == null) throw new ArgumentNullException(nameof(outputTemplateRenderer));
 
             var appliedTheme = System.Console.IsOutputRedirected || System.Console.IsErrorRedirected ?
                 ConsoleTheme.None :
-                theme ?? SystemConsoleThemes.Literate;
+                outputTemplateRenderer.Theme ?? SystemConsoleThemes.Literate;
 
-            var formatter = outputTemplateTokenRendererFactory == null
-                ? new OutputTemplateRenderer(appliedTheme, outputTemplate, formatProvider)
-                : new OutputTemplateRenderer(appliedTheme, outputTemplate, formatProvider, outputTemplateTokenRendererFactory);
-
-            return sinkConfiguration.Sink(new ConsoleSink(appliedTheme, formatter, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
+            return sinkConfiguration.Sink(
+                new ConsoleSink(appliedTheme, outputTemplateRenderer, standardErrorFromLevel), restrictedToMinimumLevel, levelSwitch);
         }
 
         /// <summary>

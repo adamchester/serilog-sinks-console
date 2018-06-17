@@ -2,20 +2,21 @@
 using System.IO;
 using Serilog.Events;
 using Serilog.Parsing;
+using Serilog.Sinks.SystemConsole.Output;
 using Serilog.Sinks.SystemConsole.Themes;
 
 namespace ConsoleDemo
 {
 
-    class ThemedExceptionTokenRenderer : Serilog.Sinks.SystemConsole.Output.OutputTemplateTokenRenderer
+    class ThemedExceptionTokenRenderer : OutputTemplateTokenRenderer
     {
         const string StackFrameLinePrefix = "   ";
 
         readonly ConsoleTheme _theme;
         readonly PropertyToken _pt;
-        private readonly Serilog.Sinks.SystemConsole.Output.OutputTemplateTokenRenderer _fallbackExceptionRenderer;
+        readonly OutputTemplateTokenRenderer _fallbackExceptionRenderer;
 
-        public ThemedExceptionTokenRenderer(ConsoleTheme theme, PropertyToken pt, Serilog.Sinks.SystemConsole.Output.OutputTemplateTokenRenderer fallbackExceptionRenderer = null)
+        public ThemedExceptionTokenRenderer(ConsoleTheme theme, PropertyToken pt, OutputTemplateTokenRenderer fallbackExceptionRenderer = null)
         {
             _theme = theme;
             _pt = pt;

@@ -24,32 +24,34 @@ using Serilog.Sinks.SystemConsole.Themes;
 namespace Serilog.Sinks.SystemConsole.Output
 {
     /// <summary>
-    /// Defines the signature of a method creates an <see cref="OutputTemplateTokenRenderer"/> for the given
-    /// <see cref="PropertyToken"/>, <see cref="ConsoleTheme"/>, <see cref="MessageTemplate"/>, and
-    /// <see cref="IFormatProvider"/>.
-    /// </summary>
-    /// <param name="outputTemplate">The full output template itself.</param>
-    /// <param name="propertyToken">The output template property token for which the factory is creating a renderer.</param>
-    /// <param name="theme">The output theme that will be used by the created renderer</param>
-    /// <param name="formatProvider">The format provider which the created renderer will use (if appropriate)</param>
-    /// <returns>An <see cref="OutputTemplateTokenRenderer"/> instance which renders the </returns>
-    public delegate OutputTemplateTokenRenderer OutputTemplateTokenRendererFactory(
-        MessageTemplate outputTemplate, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider formatProvider);
-
-    /// <summary>
     /// For the love of developer happiness, document me, please!
     /// </summary>
     public class OutputTemplateRenderer : ITextFormatter
     {
+        /// <summary>
+        /// Defines the signature of a method creates an <see cref="OutputTemplateTokenRenderer"/> for the given
+        /// <see cref="PropertyToken"/>, <see cref="ConsoleTheme"/>, <see cref="MessageTemplate"/>, and
+        /// <see cref="IFormatProvider"/>.
+        /// </summary>
+        /// <param name="outputTemplate">The full output template itself.</param>
+        /// <param name="propertyToken">The output template property token for which the factory is creating a renderer.</param>
+        /// <param name="theme">The output theme that will be used by the created renderer</param>
+        /// <param name="formatProvider">The format provider which the created renderer will use (if appropriate)</param>
+        /// <returns>An <see cref="OutputTemplateTokenRenderer"/> instance which renders the </returns>
+        public delegate OutputTemplateTokenRenderer TokenRendererFactory(
+            MessageTemplate outputTemplate, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider formatProvider);
+
         readonly OutputTemplateTokenRenderer[] _renderers;
+
+        internal ConsoleTheme Theme { get; }
 
         /// <summary>
         /// A map from output template property names (<see cref="OutputProperties"/>) to an
-        /// <see cref="OutputTemplateTokenRendererFactory"/> which can create the
+        /// <see cref="TokenRendererFactory"/> which can create the
         /// <see cref="OutputTemplateTokenRenderer"/> instance.
         /// </summary>
-        static Dictionary<string, OutputTemplateTokenRendererFactory> DefaultPropertyRenderers { get; } =
-            new Dictionary<string, OutputTemplateTokenRendererFactory>
+        static Dictionary<string, TokenRendererFactory> DefaultPropertyRenderers { get; } =
+            new Dictionary<string, TokenRendererFactory>
             {
                 [OutputProperties.LevelPropertyName]        = (template, pt, theme, formatProvider) => new LevelTokenRenderer(theme, pt),
                 [OutputProperties.NewLinePropertyName]      = (template, pt, theme, formatProvider) => new NewLineTokenRenderer(pt.Alignment),
@@ -64,7 +66,7 @@ namespace Serilog.Sinks.SystemConsole.Output
         /// in an output template (itself, a <see cref="MessageTemplate"/>) for the standard <see cref="OutputProperties"/>
         /// or <see langword="null"/> if the <paramref name="propertyToken"/> is not one of the standard output property names.
         /// </summary>
-        public static OutputTemplateTokenRenderer CreateStandardDisplayOutputPropertiesRenderer(
+        public static OutputTemplateTokenRenderer NewStandardRenderer(
             MessageTemplate outputTemplate, PropertyToken propertyToken, ConsoleTheme theme, IFormatProvider formatProvider)
         {
             return DefaultPropertyRenderers.TryGetValue(propertyToken.PropertyName, out var rendererFactory)
@@ -76,14 +78,14 @@ namespace Serilog.Sinks.SystemConsole.Output
         /// For the love of developer happiness, document me, please!
         /// </summary>
         public OutputTemplateRenderer(ConsoleTheme theme, string outputTemplate, IFormatProvider formatProvider)
-            : this(theme, outputTemplate, formatProvider, CreateStandardDisplayOutputPropertiesRenderer)
+            : this(theme, outputTemplate, formatProvider, NewStandardRenderer)
         {
         }
 
         /// <summary>
         /// For the love of developer happiness, document me, please!
         /// </summary>
-        public OutputTemplateRenderer(ConsoleTheme theme, string outputTemplate, IFormatProvider formatProvider, OutputTemplateTokenRendererFactory rendererFactory)
+        public OutputTemplateRenderer(ConsoleTheme theme, string outputTemplate, IFormatProvider formatProvider, TokenRendererFactory rendererFactory)
         {
             if (outputTemplate == null) throw new ArgumentNullException(nameof(outputTemplate));
             if (rendererFactory == null) throw new ArgumentNullException(nameof(rendererFactory));
@@ -106,6 +108,7 @@ namespace Serilog.Sinks.SystemConsole.Output
             }
 
             _renderers = renderers.ToArray();
+            Theme = theme ?? ConsoleTheme.None;
         }
 
         /// <summary>
